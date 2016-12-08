@@ -17,7 +17,7 @@ Vagrant.configure(2) do |config|
   #
   # Use Debian 8 from bento because it contains a 40 GB hard disc instead of
   # a 10 GB hard disc in contrast to "debian/jessie64" 
-  config.vm.box = "ubuntu/xenial64"
+  config.vm.box = "bento/debian-8.2"
 
   # Disable automatic box update checking. If you disable this, then
   # boxes will only be checked for updates when the user runs
@@ -31,7 +31,7 @@ Vagrant.configure(2) do |config|
 
   # Create a private network, which allows host-only access to the machine
   # using a specific IP.
-  config.vm.network "private_network", ip: "10.10.10.10"
+  config.vm.network "private_network", ip: "192.168.33.10"
 
   # Create a public network, which generally matched to bridged network.
   # Bridged networks make the machine appear as another physical device on
@@ -48,9 +48,9 @@ Vagrant.configure(2) do |config|
   # backing providers for Vagrant. These expose provider-specific options.
   config.vm.provider "virtualbox" do |vb|
     # Customize the amount of memory on the VM (in MB):
-    vb.memory = "4096"
+    vb.memory = "8192"
     # Customzie the amount of cpu cores visible to the VM:
-    vb.cpus = 4
+    vb.cpus = 8
     vb.name = "lede-buildvm"
   end
   config.vm.hostname = "lede-buildvm"

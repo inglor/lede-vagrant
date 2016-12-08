@@ -7,6 +7,9 @@
 # or `vagrant reload` are used. It provides all of the default packages and
 # configurations included with Varying Vagrant Vagrants.
 
+VM_USER=vagrant
+
+
 # By storing the date now, we can calculate the duration of provisioning at the
 # end of this script.
 start_seconds="$(date +%s)"
@@ -38,7 +41,10 @@ apt_package_check_list=(
   zlib1g-dev
   gettext
   file
+  htop
+  ccache
   ntp
+  vim
 )
 
 ### FUNCTIONS
@@ -67,7 +73,7 @@ network_check() {
 }
 
 noroot() {
-  sudo -EH -u "ubuntu" "$@";
+  sudo -EH -u "${VM_USER}" "$@";
 }
 
 not_installed() {
@@ -130,23 +136,27 @@ package_install() {
   fi
 }
 
+configure_ccache() {
+  echo -e "\nexport PATH=/usr/lib/ccache:$PATH" >> /home/${VM_USER}/.bashrc
+}
+
 get_lede() {
-  if [[ -d "/home/ubuntu/lede" ]]; then
+  if [[ -d "/home/${VM_USER}/lede" ]]; then
     echo "LEDE project source cloned, pulling latest HEAD for origin/master"
-    cd /home/ubuntu/lede
+    cd "/home/${VM_USER}/lede"
     noroot git checkout master
     noroot git pull origin
   else
-    echo "Cloning LEDE project source in /home/ubuntu/lede"
-    noroot git clone https://github.com/lede-project/source.git /home/ubuntu/lede
+    echo "Cloning LEDE project source in /home/${VM_USER}/lede"
+    noroot git clone https://github.com/lede-project/source.git /home/${VM_USER}/lede
   fi
   echo "Updating and installing feeds"
-  noroot /home/ubuntu/lede/scripts/feeds update -a
-  noroot /home/ubuntu/lede/scripts/feeds install -a
+  noroot /home/${VM_USER}/lede/scripts/feeds update -a
+  noroot /home/${VM_USER}/lede/scripts/feeds install -a
 
   if [[ -f "/vagrant_data/config/myconfig" ]]; then
-    echo "Copying /vagrant_data/config/myconfig to /home/ubuntu/lede/.config"
-    cp "/vagrant_data/config/myconfig" "/home/ubuntu/lede/.config" 
+    echo "Copying /vagrant_data/config/myconfig to /home/${VM_USER}/lede/.config"
+    cp "/vagrant_data/config/myconfig" "/home/${VM_USER}/lede/.config" 
   fi
 }
 
@@ -157,6 +167,7 @@ network_check
 # Package and Tools Install
 echo "Installing dependencies"
 package_install
+configure_ccache
 echo "Getting LEDE"
 get_lede
 
