@@ -24,29 +24,21 @@ apt_package_install_list=()
 # virtual machine. We'll then loop through each of these and check individual
 # status before adding them to the apt_package_install_list array.
 apt_package_check_list=(
-
-  # specifics listed on openwrt site
-  git-core
   build-essential
   libssl-dev
   libncurses5-dev
   unzip
   gawk
+  git
+  python
   subversion
   mercurial
-  # samba so we will be able to see out git repo
-  # as the git repo must be within the VM on windows?
-  samba
-
-  # ntp service to keep clock current
+  wget
+  g++
+  zlib1g-dev
+  gettext
+  file
   ntp
-
-  
-  # dos2unix
-  # Allows conversion of DOS style line endings to something we'll have less
-  # trouble with in Linux.
-  dos2unix
-
 )
 
 ### FUNCTIONS
@@ -74,41 +66,8 @@ network_check() {
   fi
 }
 
-git_ppa_check() {
-  # git
-  #
-  # apt-get does not have latest version of git,
-  # so let's the use ppa repository instead.
-  #
-  # Install prerequisites.
-  sudo apt-get install -y python-software-properties software-properties-common &>/dev/null
-  # Add ppa repo.
-  echo "Adding ppa:git-core/ppa repository"
-  sudo add-apt-repository -y ppa:git-core/ppa &>/dev/null
-  # Update apt-get info.
-  sudo apt-get update &>/dev/null
-}
-
 noroot() {
-  sudo -EH -u "vagrant" "$@";
-}
-
-profile_setup() {
-  # Copy custom dotfiles and bin file for the vagrant user from local
-  cp "/srv/config/bash_profile" "/home/vagrant/.bash_profile"
-  cp "/srv/config/bash_aliases" "/home/vagrant/.bash_aliases"
-  cp "/srv/config/vimrc" "/home/vagrant/.vimrc"
-
-
-  echo " * Copied /srv/config/bash_profile                      to /home/vagrant/.bash_profile"
-  echo " * Copied /srv/config/bash_aliases                      to /home/vagrant/.bash_aliases"
-  echo " * Copied /srv/config/vimrc                             to /home/vagrant/.vimrc"
-
-  # If a bash_prompt file exists in the VVV config/ directory, copy to the VM.
-  if [[ -f "/srv/config/bash_prompt" ]]; then
-    cp "/srv/config/bash_prompt" "/home/vagrant/.bash_prompt"
-    echo " * Copied /srv/config/bash_prompt to /home/vagrant/.bash_prompt"
-  fi
+  sudo -EH -u "ubuntu" "$@";
 }
 
 not_installed() {
@@ -157,77 +116,57 @@ package_install() {
   if [[ ${#apt_package_install_list[@]} = 0 ]]; then
     echo -e "No apt packages to install.\n"
   else
-    # Before running `apt-get update`, we should add the public keys for
-    # the packages that we are installing from non standard sources via
-    # our appended apt source.list
-
     # Update all of the package references before installing anything
     echo "Running apt-get update..."
     apt-get -y update
-
     # Install required packages
     echo "Installing apt-get packages..."
     apt-get -y install ${apt_package_install_list[@]}
-
     # Remove unnecessary packages
     echo "Removing unnecessary packages..."
     apt-get autoremove -y
-
     # Clean up apt caches
     apt-get clean
   fi
 }
 
-tools_install() {
-echo "tools_install."
-
-# make a completely open share on /home/vagrant !!!
-cp /srv/config/smb.conf /etc/samba/
-# and restart samba
-/etc/init.d/samba restart
-
-}
-
 get_lede() {
-echo "get_lede."
+  if [[ -d "/home/ubuntu/lede" ]]; then
+    echo "LEDE project source cloned, pulling latest HEAD for origin/master"
+    cd /home/ubuntu/lede
+    noroot git checkout master
+    noroot git pull origin
+  else
+    echo "Cloning LEDE project source in /home/ubuntu/lede"
+    noroot git clone https://github.com/lede-project/source.git /home/ubuntu/lede
+  fi
+  echo "Updating and installing feeds"
+  noroot /home/ubuntu/lede/scripts/feeds update -a
+  noroot /home/ubuntu/lede/scripts/feeds install -a
 
-git clone https://github.com/lede-project/source.git ~/lede
-
-cd ~/lede
-#./scripts/feeds update -a
-#./scripts/feeds install -a
-
-#copy .config file over if we have one
-cp /srv/source/myconfig ./.config
-
-#copy .quiltrc recommended into ~/
-cp /srv/config/.quiltrc ~/
-
-
+  if [[ -f "/vagrant_data/config/myconfig" ]]; then
+    echo "Copying /vagrant_data/config/myconfig to /home/ubuntu/lede/.config"
+    cp "/vagrant_data/config/myconfig" "/home/ubuntu/lede/.config" 
+  fi
 }
-
-
 
 ### SCRIPT
 #set -xv
 
 network_check
-# Profile_setup
-echo "Bash profile setup and directories."
-profile_setup
-
-network_check
 # Package and Tools Install
-echo " "
-echo "Main packages check and install."
-git_ppa_check
+echo "Installing dependencies"
 package_install
-tools_install
+echo "Getting LEDE"
 get_lede
-network_check
 
 # And it's done
 end_seconds="$(date +%s)"
 echo "-----------------------------"
 echo "Provisioning complete in "$(( end_seconds - start_seconds ))" seconds"
-echo "now login on ssh, and cd ~/lede, then make menuconfig, then make"
+echo "To build the LEDE project: ssh, and cd ~/lede, then make menuconfig, then make"
+echo "  vagrant ssh"
+echo "  cd ~/lede"
+echo "  make menuconfig"
+echo "  make -j$(nproc) V=99"
+echo -e "After compilation has finished, copy the result to the host machine:\\n  cp bin/*/*.{bin,img} /vagrant_data/build\\n  cp .config /vagrant_data/build/config"
