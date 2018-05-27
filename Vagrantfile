@@ -1,15 +1,17 @@
 # -*- mode: ruby -*-
 # vi: set ft=ruby :
 
+require File.dirname(__FILE__)+"/dependency_manager"
 vagrant_dir = File.expand_path(File.dirname(__FILE__))
+
+check_plugins ["vagrant-cachier", "vagrant-disksize", "vagrant-persistent-storage"]
 
 # Vagrantfile API/syntax version. Don't touch unless you know what you're doing!
 VAGRANTFILE_API_VERSION = "2"
 
 Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
-  # Use Debian 8 from bento because it contains a 40 GB hard disc instead of
-  # a 10 GB hard disc in contrast to "debian/jessie64" 
-  config.vm.box = "bento/debian-8.2"
+  config.vm.box = "ubuntu/xenial64"
+  config.disksize.size = '20GB'
 
   config.vm.provider :virtualbox do |v|
     host = RbConfig::CONFIG['host_os']
@@ -20,7 +22,8 @@ Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
       cpus = `sysctl -n hw.ncpu`.to_i
       mem = `sysctl -n hw.memsize`.to_i / 1024 / 1024
     elsif host =~ /linux/
-      cpus = `nproc`.to_i
+#      cpus = `lscpu -p | egrep -v '^#' | sort -u -t, -k 2,4 | wc -l`.to_i
+      cpus = `nproc --all`.to_i
       mem = `grep 'MemTotal' /proc/meminfo | sed -e 's/MemTotal://' -e 's/ kB//'`.to_i / 1024
     elsif host =~ /mswin|mingw|cygwin/
       cpus = `wmic cpu Get NumberOfLogicalProcessors`.split[1].to_i
@@ -34,6 +37,7 @@ Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
   config.vm.synced_folder ".", "/vagrant_data"
   config.vm.hostname = "lede-buildvm"
   config.vm.network "private_network", ip: "192.168.33.10"
+  config.vm.network "forwarded_port", guest: 22, host: 2222, host_ip: "127.0.0.1", id: 'ssh'
 
   # provision.sh or provision-custom.sh
   #
