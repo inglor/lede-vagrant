@@ -22,7 +22,6 @@ Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
       cpus = `sysctl -n hw.ncpu`.to_i
       mem = `sysctl -n hw.memsize`.to_i / 1024 / 1024
     elsif host =~ /linux/
-#      cpus = `lscpu -p | egrep -v '^#' | sort -u -t, -k 2,4 | wc -l`.to_i
       cpus = `nproc --all`.to_i
       mem = `grep 'MemTotal' /proc/meminfo | sed -e 's/MemTotal://' -e 's/ kB//'`.to_i / 1024
     elsif host =~ /mswin|mingw|cygwin/
