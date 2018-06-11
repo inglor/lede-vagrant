@@ -156,7 +156,7 @@ get_lede() {
     noroot git pull origin
   else
     echo "Cloning LEDE project source in /home/${VM_USER}/lede"
-    noroot git clone https://git.lede-project.org/source.git /home/${VM_USER}/lede
+    noroot git clone https://git.openwrt.org/openwrt/openwrt.git /home/${VM_USER}/lede
   fi
   echo "Updating and installing feeds"
   noroot /home/${VM_USER}/lede/scripts/feeds update -a
